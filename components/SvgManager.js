@@ -53,7 +53,7 @@ function SvgManager(){
         <Polygon fill="#FFFFFF" points="22.49,4.24 22.49,6.24 14.45,6.24 9.58,11.11 9.58,25.82 7.51,25.82 7.51,4.24 "/>
         <Polygon fill="#FFFFFF" points="19.29,1.32 19.29,3.32 6.381,3.32 6.381,22.9 4.311,22.9 4.311,1.32 "/>
     </Svg>;
-    const resultIcon = <Svg width="100" height="100" viewBox="0 0 30 30">
+    const resultIcon = <Svg width="80" height="80" viewBox="0 0 30 30">
         <Circle fill="rgba(255, 255, 255, .8)" cx="15" cy="15" r="15"/>
         <Circle fill="#339999" cx="15" cy="15" r="12.688"/>
         <Rect x="10.719" y="8.833" fill="#FFFFFF" width="8.563" height="12.334"/>
@@ -63,7 +63,7 @@ function SvgManager(){
         <Rect x="12.846" y="15.137" transform="matrix(0.807 0.5906 -0.5906 0.807 11.9769 -5.3683)" fill="#FFFFFF" width="2.708" height="1"/>
         <Rect x="15.188" y="13.194" transform="matrix(-0.808 -0.5892 0.5892 -0.808 19.4982 36.4517)" fill="#FFFFFF" width="1.002" height="3.709"/>
     </Svg>;
-    const newSimpleIcon = <Svg width="100" height="100" viewBox="0 0 30 30">
+    const newSimpleIcon = <Svg width="80" height="80" viewBox="0 0 30 30">
         <Circle fill="rgba(255, 255, 255, .8)" cx="15" cy="15" r="15"/>
         <Circle fill="#339999" cx="15" cy="15" r="12.688"/>
         <Polygon fill="#FFFFFF" points="19.281,8.832 19.281,21.167 10.719,21.167 10.719,11.846 13.731,11.846 13.731,8.832 "/>
@@ -71,7 +71,7 @@ function SvgManager(){
         <Rect x="12.38" y="14.43" fill="#339999" width="5.237" height="1.537"/>
         <Rect x="14.231" y="12.58" fill="#339999" width="1.539" height="5.238"/>
     </Svg>;
-    const newCompoundIcon = <Svg width="100" height="100" viewBox="0 0 30 30">
+    const newCompoundIcon = <Svg width="80" height="80" viewBox="0 0 30 30">
         <Circle fill="rgba(255, 255, 255, .8)" cx="15" cy="15" r="15"/>
         <Circle fill="#339999" cx="15" cy="15" r="12.688"/>
         <Polygon fill="#FFFFFF" points="21.11,10.484 21.11,22.819 12.548,22.819 12.548,13.498 15.56,13.498 15.56,10.484 "/>

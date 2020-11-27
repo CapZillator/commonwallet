@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, View, Button, Pressable, Switch, Alert, ScrollView, TouchableOpacity, TouchableHighlight } from 'react-native';
 import { connect } from 'react-redux';
-import Svg, { Polygon, Rect, Circle, Path } from 'react-native-svg';
 import { bindActionCreators } from 'redux';
 import { actionCreators as actions } from './../actions';
 import { NavigationContainer, NavigationActions, CommonActions, StackActions } from '@react-navigation/native';
@@ -21,7 +20,7 @@ const Drawer = createDrawerNavigator();
 
 const langPack = LanguageManager();//Подключаем языки
 const currencies = CurrencyManager();//Подключаем валюту
-const graphics = SvgManager();
+const graphics = SvgManager();//Подключаем векторную графику (иконки)
 
 const MyTextInput = ({ name, onChange, onEndEditing }) => {
   return (
@@ -69,6 +68,68 @@ function convertStringToFloat(string){//Получаем записанные в
   if (isNaN(sum)) sum = 0; 
   return sum;
 }
+
+function countDebts(baseList){//Получает список простых событий и считает, кто кому сколько должен
+  let debtorsList = [];
+  let creditorsList = [];
+  let debtsResult = [];
+  baseList.forEach(el => {
+        if (el.balance > 0) creditorsList.push({name: el.name, balance: el.balance});
+        else if (el.balance < 0) debtorsList.push({name: el.name, balance: el.balance * -1});
+      });
+      debtorsList.sort(function (a, b) {
+        if (a.balance < b.balance) {
+        return 1;
+      }
+      if (a.balance > b.balance) {
+        return -1;
+      }
+      return 0;
+      });
+      creditorsList.sort(function (a, b) {
+      if (a.balance < b.balance) {
+        return 1;
+      }
+      if (a.balance > b.balance) {
+        return -1;
+      }
+      return 0;
+      });
+      creditorsList.forEach(c => {
+        debtorsList.forEach(d => {
+          if (d.balance > 0 && c.balance > 0) {
+            if (d.balance === c.balance) {
+              let final = debtsResult.find(f => f.name === c.name);
+              if (final){
+                final.who.push({name: d.name, sum: d.balance});
+              }
+              else debtsResult.push({name: c.name, who: [{name: d.name, sum: c.balance}]});
+              c.balance = 0;
+              d.balance = 0;
+            }
+            else if (d.balance < c.balance){
+              c.balance = c.balance - d.balance;
+              let final = debtsResult.find(f => f.name === c.name);
+              if (final){
+                final.who.push({name: d.name, sum: d.balance});
+              }
+              else debtsResult.push({name: c.name, who: [{name: d.name, sum: d.balance}]});
+              d.balance = 0;
+            }
+          else {
+            d.balance = d.balance - c.balance;
+            let final = debtsResult.find(f => f.name === c.name);
+            if (final){
+              final.who.push({name: d.name, sum: c.balance});
+            }
+            else debtsResult.push({name: c.name, who: [{name: d.name, sum: c.balance}]});
+            c.balance = 0;
+          };
+          };
+        });
+      });
+  return debtsResult;
+};
 
 //Экран-агрегатор всех событий (простых и составных)
 function EventsManager({ events, lang, delEvent, navigation }) {
@@ -227,12 +288,13 @@ function SimpleEvent({ events, lang, globalCurrency, addEvent, addChildEvent, se
     onChangeNewMemberName(name);
   };
   const onAddNewMemberClick = () => {//Добавляет нового участника в список
-    const isNameExist = members.find(member => member.name === newMember);
-    if (newMember && newMember.length > 0) {
+    const newMemberName = newMember.trim();
+    const isNameExist = members.find(member => member.name === newMemberName);
+    if (newMemberName && newMemberName.length > 0) {
       if (!isNameExist){
-        onChangeMembers(members => members.concat([{name: newMember, balance: 0, temp: 0, isDebtor: false}]));
+        onChangeMembers(members => members.concat([{name: newMemberName, balance: 0, temp: 0, isDebtor: false}]));
         onChangeNewMemberName("");
-        if (members.length === 0) onChangeWhoPay(newMember);
+        if (members.length === 0) onChangeWhoPay(newMemberName);
         if (stateStringType === "nameAlert"){
           onChangeStateString("");
           onChangeStateStringType(null);
@@ -248,16 +310,16 @@ function SimpleEvent({ events, lang, globalCurrency, addEvent, addChildEvent, se
       onChangeStateStringType("nameAlert");
     };
   };
-  const changePickerVisibility = () => {
+  const changePickerVisibility = () => {//Меняем переменную-флаг, отвечающую за отображение DatePicker
     onChangeDatePickerVisibility(true);
   };
-  const onChangeDatePicker = (event, selectedDate) => {
+  const onChangeDatePicker = (event, selectedDate) => {//Получаем и записываем новое значение даты из DatePicker
     const newDate = selectedDate || date;
     const visibilityState = showDatePicker ? false: true;
     onChangeDatePickerVisibility(visibilityState);
     onChangeDate(newDate);
   };
-  const onChangeMemberBalance = (event) => {
+  const onChangeMemberBalance = (event) => {//Получаем и временно записываем пользовательский "ввод" суммы расходов
     const {name, value} = event;
     let membersList = members.slice();
     let newValue = membersList.find(item => item.name === name);
@@ -267,7 +329,7 @@ function SimpleEvent({ events, lang, globalCurrency, addEvent, addChildEvent, se
       onChangeNowEditing(newValue.name);
     };
   };
-  const onEndEditingMemberBalance = () => {
+  const onEndEditingMemberBalance = () => {//По завершению "ввода" сохраняем данные
     let membersList = members.slice();
     let newValue = membersList.find(item => item.name === nowEditing);
     if (newValue) {
@@ -280,11 +342,11 @@ function SimpleEvent({ events, lang, globalCurrency, addEvent, addChildEvent, se
       onChangeNowEditing("");
     };
   };
-  const onChangeTips = (value) => {
+  const onChangeTips = (value) => {//Отслеживаем изменения ввода в поле "чаевые, общие расходы"
     let tips = convertStringToFloat(value);
     onChangeTotalTips(tips);
   };
-  const onEndEditingTips = () => {
+  const onEndEditingTips = () => {//По завершению редактирования сохраняем изменения в поле "чаевые, общие расходы"
     if (splitEqually){
       let tempMembers = members.slice(0);
       const newBalance = Math.round((totalTips / tempMembers.length) * 100) / 100;
@@ -409,8 +471,8 @@ function SimpleEvent({ events, lang, globalCurrency, addEvent, addChildEvent, se
       onChangeStateStringType("clearDebt");
     }
   };
-  const onEndHedaerEditing = () => {
-    if (header && header.length > 1){
+  const onEndHedaerEditing = () => {//Обработчик заголовка
+    if (header && header.length > 1){//Проверяет длинну заголовка
       if (stateStringType === "headerAlert"){
         onChangeStateString("");
         onChangeStateStringType(null);
@@ -421,7 +483,7 @@ function SimpleEvent({ events, lang, globalCurrency, addEvent, addChildEvent, se
       onChangeStateStringType("headerAlert");
     };
   };
-  const onChangeWhoPayPress = (value) => {
+  const onChangeWhoPayPress = (value) => {//Обработчик "кто платил?"
     let tempMembers = members.slice(0);
     tempMembers.forEach(el => {
       if (el.name === value) el.isDebtor = false;
@@ -516,7 +578,7 @@ function SimpleEvent({ events, lang, globalCurrency, addEvent, addChildEvent, se
   <Text style={styles.dateText}>{dateFromState}</Text>
   </View>;
   if (showDatePicker) dtPicker = <DateTimePicker  value={date}  mode="date"  is24Hour={true}  display="default"  onChange={onChangeDatePicker} />;
-  commonExpensisResult = <Text style={styles.eventText}>{selectedLang.includingTips} {tipsSum} {currency}</Text>;
+  commonExpensisResult = tipsSum > 0 ? <Text style={styles.eventText}>{selectedLang.includingTips} {tipsSum} {currency}</Text>: null;
   let dateCurrencyIdBlock = <View style={styles.inrowSpaceAround}>
     <View style={styles.marginElement}>
       <View style={styles.blockRowContainer}>
@@ -852,7 +914,6 @@ function GlobalEvent({ events, lang, route, delChildEvent, navigation }) {
     </Pressable>;
   }
   else childEventsList = <Text style={styles.emptyListText}>{selectedLang.emptyList}</Text>;
-  
   return (
     <View style={styles.listContainer}>
       <ScrollView>
@@ -934,73 +995,17 @@ function GlobalEventResult({ events, lang, setEvent, route, navigation }) {
       });
     });
     //Считаем, кто кому сколько должен
-    let debtorsList = [];
-    let creditorsList = [];
-    resultList.forEach(el => {
-      if (el.balance > 0) creditorsList.push({name: el.name, balance: el.balance});
-      else if (el.balance < 0) debtorsList.push({name: el.name, balance: el.balance * -1});
-    });
-    debtorsList.sort(function (a, b) {
-      if (a.balance < b.balance) {
-        return 1;
-      }
-      if (a.balance > b.balance) {
-        return -1;
-      }
-      return 0;
-    });
-    creditorsList.sort(function (a, b) {
-      if (a.balance < b.balance) {
-        return 1;
-      }
-      if (a.balance > b.balance) {
-        return -1;
-      }
-      return 0;
-    });
-    creditorsList.forEach(c => {
-      debtorsList.forEach(d => {
-        if (d.balance > 0 && c.balance > 0) {
-          if (d.balance === c.balance) {
-            let final = finalResult.find(f => f.name === c.name);
-            if (final){
-              final.who.push({name: d.name, sum: d.balance});
-            }
-            else finalResult.push({name: c.name, who: [{name: d.name, sum: c.balance}]});
-            c.balance = 0;
-            d.balance = 0;
-          }
-          else if (d.balance < c.balance){
-            c.balance = c.balance - d.balance;
-            let final = finalResult.find(f => f.name === c.name);
-            if (final){
-            final.who.push({name: d.name, sum: d.balance});
-            }
-            else finalResult.push({name: c.name, who: [{name: d.name, sum: d.balance}]});
-            d.balance = 0;
-          }
-          else {
-            d.balance = d.balance - c.balance;
-            let final = finalResult.find(f => f.name === c.name);
-            if (final){
-              final.who.push({name: d.name, sum: c.balance});
-            }
-            else finalResult.push({name: c.name, who: [{name: d.name, sum: c.balance}]});
-            c.balance = 0;
-          };
-        };
-      });
-    });
+    finalResult = countDebts(resultList);
   };
-  const [resultCurrency, onChangeResultCurrency] = useState(initResultCurrency);
-  const [currenciesList, onSetCurrenciesList] = useState(convertCurrency);
+  const [resultCurrency, onChangeResultCurrency] = useState(initResultCurrency);//Валюта, в которой будут посчитаны итоги
+  const [currenciesList, onSetCurrenciesList] = useState(convertCurrency);//Курсы валют
   const [totalResult, onChangeTotalResult] = useState(spentResultList);//Если подставить resultList, получится баланс дебит/кредит
-  const [finalResultList, onChangeFinalResult] = useState(finalResult);
-  const [resultCurrencyVal, onChangeResultCurrencyVal] = useState(initResultCurrencyVal);
-  const onChangeCurrencyListVal = (value) => {
+  const [finalResultList, onChangeFinalResult] = useState(finalResult);//Кто кому сколько должен
+  const [resultCurrencyVal, onChangeResultCurrencyVal] = useState(initResultCurrencyVal);//Курс "результирующей" валюты
+  const onChangeCurrencyListVal = (value) => {//Отслеживаем изменение курса валюты
     let tempList = currenciesList.slice(0);
     let el = tempList.find(c => c.name === value.name);
-    if (el) {
+    if (el) {//Пересчитываем все значения из-за нового курса
       let newVal = value.value.trim();
       newVal = newVal.replace(/[,\.]+/, ".");
       newVal = parseFloat(newVal);
@@ -1039,72 +1044,15 @@ function GlobalEventResult({ events, lang, setEvent, route, navigation }) {
             if (spentResult && balance > 0) spentResult.balance = spentResult.balance + balance + tips;
           });
         });
-        //Считаем, кто кому сколько должен
-        let debtorsList = [];
-        let creditorsList = [];
-        let finalResult = [];
-        resultList.forEach(el => {
-          if (el.balance > 0) creditorsList.push({name: el.name, balance: el.balance});
-          else if (el.balance < 0) debtorsList.push({name: el.name, balance: el.balance * -1});
-        });
-        debtorsList.sort(function (a, b) {
-          if (a.balance < b.balance) {
-          return 1;
-        }
-        if (a.balance > b.balance) {
-          return -1;
-        }
-        return 0;
-        });
-        creditorsList.sort(function (a, b) {
-        if (a.balance < b.balance) {
-          return 1;
-        }
-        if (a.balance > b.balance) {
-          return -1;
-        }
-        return 0;
-        });
-        creditorsList.forEach(c => {
-          debtorsList.forEach(d => {
-            if (d.balance > 0 && c.balance > 0) {
-              if (d.balance === c.balance) {
-                let final = finalResult.find(f => f.name === c.name);
-                if (final){
-                  final.who.push({name: d.name, sum: d.balance});
-                }
-                else finalResult.push({name: c.name, who: [{name: d.name, sum: c.balance}]});
-                c.balance = 0;
-                d.balance = 0;
-              }
-              else if (d.balance < c.balance){
-                c.balance = c.balance - d.balance;
-                let final = finalResult.find(f => f.name === c.name);
-                if (final){
-                  final.who.push({name: d.name, sum: d.balance});
-                }
-                else finalResult.push({name: c.name, who: [{name: d.name, sum: d.balance}]});
-                d.balance = 0;
-              }
-            else {
-              d.balance = d.balance - c.balance;
-              let final = finalResult.find(f => f.name === c.name);
-              if (final){
-                final.who.push({name: d.name, sum: c.balance});
-              }
-              else finalResult.push({name: c.name, who: [{name: d.name, sum: c.balance}]});
-              c.balance = 0;
-            };
-            };
-          });
-        });
+        finalResult = countDebts(resultList);//Считаем, кто кому сколько должен
         onChangeFinalResult(finalResult);
         onChangeTotalResult(spentResultList);
       };
       onSetCurrenciesList(tempList);
     };
   };
-  const onChangeResult = (value) => {
+  
+  const onChangeResult = (value) => {//Обновляем курс валюты одного из событий
     let tempCurrencies = currenciesList.slice(0);
     let currencyValue = tempCurrencies.find(el => el.name === value);
     if (currencyValue){
@@ -1113,7 +1061,7 @@ function GlobalEventResult({ events, lang, setEvent, route, navigation }) {
     else onChangeResultCurrencyVal(1);
     onChangeResultCurrency(value);
   };
-  const onChangeConvert = (value) => {
+  const onChangeConvert = (value) => {//Обновляем курс "результирующей" валюты
     let newVal = value.trim();
     newVal = newVal.replace(/[,\.]+/, ".");
     newVal = parseFloat(newVal);
@@ -1162,16 +1110,18 @@ function GlobalEventResult({ events, lang, setEvent, route, navigation }) {
   if (initCurrency !== resultCurrency){
     let isExist = currenciesList.find(el => el.name === resultCurrency);
     if (!isExist) convertResultCurrencyBlock = <View style={styles.inrow}>
-      <View style={styles.marginRightElement}>
-        <Text style={styles.mediumText}>1 {initCurrency} =</Text>
-      </View>
-      <View style={styles.marginRightElement}>
-        <TextInput 
-          style={styles.inputCurrency} 
-          onChangeText={onChangeConvert}
-          keyboardType={'decimal-pad'}
-        />
-      </View>
+      <View style={styles.blockRowContainer}>
+        <View style={styles.marginRightElement}>
+          <Text style={styles.mediumText}>1 {initCurrency} =</Text>
+        </View>
+        <View style={styles.marginRightElement}>
+          <TextInput 
+            style={styles.inputCurrency} 
+            onChangeText={onChangeConvert}
+            keyboardType={'decimal-pad'}
+          />
+        </View>
+      </View>      
       <Text style={styles.mediumText}>{resultCurrencyVal} {resultCurrency}</Text>
     </View>;
   };
@@ -1198,14 +1148,16 @@ function GlobalEventResult({ events, lang, setEvent, route, navigation }) {
   if (currenciesList.length > 0) {
     currencyBlock = currenciesList.map((el, i) => {
       return <View key={i} style={styles.inrow}>
-         <View style={styles.marginRightElement}>
-          <Text style={styles.mediumText}>1 {initCurrency} =</Text>
-         </View>        
-        <View style={styles.marginRightElement}>
+        <View style={styles.blockRowContainer}>
+          <View style={styles.marginRightElement}>
+            <Text style={styles.mediumText}>1 {initCurrency} =</Text>
+          </View>        
+          <View style={styles.marginRightElement}>
           <MyCurrencyInput
             name={el.name}
             onChange={onChangeCurrencyListVal}
           />
+          </View>
         </View>
         <Text style={styles.mediumText}>{el.value} {el.name}</Text>
       </View>;
@@ -1404,7 +1356,7 @@ function mapDispatchToProps(dispatch){
         delChildEvent: bindActionCreators(actions.delChildEvent, dispatch)
     };
 }
-//Connect screens with redux
+//Подключаем экраны к redux
 let StartScreen = connect(
   mapStatetoProps,
   mapDispatchToProps

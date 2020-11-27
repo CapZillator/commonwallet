@@ -175,7 +175,7 @@ function StylesManager(){
         borderBottomWidth: 2,
         width: 50,
         color: '#339999',
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: 'bold'
     },
     darkButton: {
