@@ -897,10 +897,10 @@ function GlobalEvent({ events, lang, route, delChildEvent, navigation }) {
       let title = el.name;
       title = title.length > 20 ? `${title.substring(0, 20).trim()}...`: title;
       return <View key={i} style={styles.eventWrapper}>
+        <View style={styles.marginRightElement}>
+          {graphics.singleEventIcon}
+        </View>
         <Pressable style={styles.blockRowContainer} onPress={() => navigation.navigate('Simple event', {isNew: false, isChild: true, eventID: el.id, parentID: selfID, title: el.name})}> 
-          <View style={styles.marginRightElement}>
-            {graphics.singleEventIcon}
-          </View>
           <View style={styles.marginRightElement}>
             <Text style={styles.eventHeader}>{title}</Text>
             <Text style={styles.eventText}>{date}</Text>
